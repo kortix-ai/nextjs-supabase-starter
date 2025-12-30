@@ -22,6 +22,32 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+(function() {
+  if (window.__consoleCaptureInstalled || window === window.top) return;
+  window.__consoleCaptureInstalled = true;
+  ['log','warn','error','info','debug'].forEach(function(m) {
+    var orig = console[m];
+    console[m] = function() {
+      orig.apply(console, arguments);
+      try {
+        window.parent.postMessage({
+          type: 'console', method: m,
+          args: [].slice.call(arguments).map(function(a) {
+            return typeof a === 'object' ? JSON.stringify(a) : String(a);
+          })
+        }, '*');
+      } catch(e) {}
+    };
+  });
+  window.onerror = function(m,s,l,c,e) {
+    window.parent.postMessage({type:'console',method:'error',args:['Uncaught: '+(e?.stack||m)]}, '*');
+  };
+})();
+`}} />
+      </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider
           attribute="class"
